@@ -1,0 +1,1098 @@
+\documentclass{llncs}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{algorithm}
+\usepackage[hyphens]{url}
+\usepackage[noend]{algpseudocode}
+\usepackage{subcaption}
+\usepackage[english]{babel}	
+\usepackage{paralist}
+\usepackage{setspace}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{adjustbox}
+\usepackage{auto-pst-pdf}
+\usepackage{pst-all}
+\usepackage{pstricks-add}
+\usepackage[landscape,margin=0.07in]{geometry}
+\usepackage{titlesec}
+\usepackage{multicol}
+
+\pagestyle{empty}
+
+\makeatletter
+\renewcommand{\section}{\@startsection{section}{1}{0mm}%
+                                {-1ex plus -.5ex minus -.2ex}%
+                                {0.5ex plus .2ex}%x
+                                {\normalfont\large\bfseries}}
+\renewcommand{\subsection}{\@startsection{subsection}{2}{0mm}%
+                                {-1explus -.5ex minus -.2ex}%
+                                {0.5ex plus .2ex}%
+                                {\normalfont\normalsize\bfseries}}
+\renewcommand{\subsubsection}{\@startsection{subsubsection}{3}{0mm}%
+                                {-1ex plus -.5ex minus -.2ex}%
+                                {1ex plus .2ex}%
+                                {\normalfont\small\bfseries}}
+\makeatother
+\setcounter{secnumdepth}{0}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt plus 0.5ex}
+\begin{document}
+\begin{multicols}{4}
+\setlength{\premulticols}{1pt}
+\setlength{\postmulticols}{1pt}
+\setlength{\multicolsep}{0.5pt}
+\setlength{\columnsep}{2pt}
+
+\section{Memory Management}
+
+\subsection{Memory Hardware}
+Physical Memory Storage:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Random Access Memory (RAM)
+    \item Can be treated as an array of bytes (Addressable Units)
+    \item Each byte has a unique index = physical address
+    \item Minimum addressable unit? = A byte!
+    \item 64-bit: have max of $2^{64}$ addresses to use.
+    \item A contiguous memory region = An interval of consecutive addresses
+\end{itemize}
+\vspace*{-2mm}
+We can address bits, but they may have same address.
+Executable typically contains code for text region and data layout (for data
+region).
+\subsection{Memory Usage Summary}
+Transient Data:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Valid only for a limited duration, e.g. during function call (stack)
+\end{itemize}
+\vspace*{-2mm}
+Persistent Data: 
+\vspace*{-2mm}
+\begin{itemize}
+    \item Valid for the duration of the program unless explicitly removed (if applicable)
+    \item e,g heap, global, code.
+\end{itemize}
+\vspace*{-2mm}
+Both types of data sections can grow/shrink during execution.
+\subsection{Operating System: Managing Memory}
+OS handles the following memory related tasks:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Allocate memory space to new process
+    \item Manage memory space for process
+    \item Protect memory space of process from each other
+    \item Provides memory related system calls to process
+    \item Manage memory space for internal use
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Without Memory Abstraction}
+Pros:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Memory access is straightforward
+    \item Address in program == Physical Address, great for performance.
+    \item No conversion/mapping is required
+    \item Address fixed during compilation time
+\end{itemize}
+\vspace*{-2mm}
+Cons:
+\vspace*{-2mm}
+\begin{itemize}
+    \item If two processes are occupying the same physical memory:
+    \item Conflicts: Both processes assume memory starts at 0!
+    \item Hard to protect mem space.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Memory Abstraction: Logical Addresses}
+Embedding physical memory address in program is a bad idea.
+Give birth to the idea of logical addresses!
+\vspace*{-2mm}
+\begin{itemize}
+    \item Logical address == how the process view its memory space
+    \item Logical address != Physical address in general, mapping 
+    is needed 
+    \item mapping concept is called \textbf{indirection}: provide mapping from physical to logical address
+    \item Each process has a self-contained, independent logical memory
+    space
+    \item # of ways to organise this mapping schemes, logical abstraction to physical helps OS avoid clashes in programs while allowing compiler to only care about physical and not do alot of work
+\end{itemize}
+\vspace*{-2mm}
+\section{Contiguous Memory Management}
+Process must be in memory during execution!\\
+Each process occupies a contiguous memory region. 
+The physical memory is large enough to contain one or more processes with
+complete memory space.
+\subsection{Multitasking, Context Switching, Swapping}
+Multitasking: Allow multiple processes in the physical memory together,can
+switch from one process to another.
+When the physical memory is full, we free up memory by:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Removing terminated process
+    \item Swapping blocked process to secondary storage
+\end{itemize}
+\vspace*{-2mm}
+\textbf{Memory Partition}:The contiguous memory region allocated to a single
+process. 
+\subsection{Fixed Partitioning}
+\includegraphics[height=3cm,width=\linewidth]{fixed.PNG}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Physical memory is split into fixed # of partitions
+    \item A process will occupy one of the partitions
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{green}{Pros}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Easy to manage
+    \item Fast to allocate since every free partition is the same, no need to choose.
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{red}{Cons}:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Partition size need be large enough to contain the largest of the processes
+    \item \textcolor{blue}{Internal fragmentation} created when process don't occupy whole partition
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Dynamic Partitioning}
+\includegraphics[height=3.5cm,width=\linewidth]{dynamic.PNG}
+\vspace*{-2mm}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Partition is created base on the actual size of process
+    \item OS keep track of the occupied and free memory regions
+    \item Perform splitting and merging when necessary
+\end{itemize}
+\vspace*{-2mm}
+Free memory space is known as hole. With process creation/termination/swapping, tends to have a large # of holes.
+Known as \textcolor{blue}{external fragmentation}.
+Merging the holes by moving occupied partitions can create larger
+hole (more likely to be useful)\\
+\textcolor{green}{Pros:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Flexible and remove internal fragmentation.
+    \item No waste: process gets exactly memory it asked for.
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{red}{Cons}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Need to maintain more information in OS.
+    \item Takes more time to locate appropriate region.
+    \item Creates \textcolor{blue}{external fragmentation}.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Allocation for Dynamic}
+Assuming the OS maintain a list of partitions and holes.\\
+Algorithm to locate partition of size N:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Search for hole with size M > N.
+    \item Split the hole into N and M-N
+    \item N will be the new partition
+    \item M-N will be the left over space: a new hole
+\end{itemize}
+\vspace*{-2mm}
+Variants:
+\vspace*{-2mm}
+\begin{itemize}
+    \item 1. First-Fit: Take the first hole that is large enough
+    \item 2. Best-Fit: Find the smallest hole that is large enough
+    \item 3. Worst-Fit:Find the largest hole
+\end{itemize}
+\vspace*{-2mm}
+All algorithms take $O(n)$ for allocation and deallocation, and $O(1)$ for merging. To improve: use DS to find your own partition faster: hashtables,
+so no need search entire list.\\
+When an occupied partition is freed:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Merge with adjacent hole if possible
+    \item Compaction can also be used:
+    \item Move the occupied partition around to create consolidate holes
+    \item Cannot be invoked too frequently as it is very time consuming
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Buddy Allocation}
+Buddy memory allocation provides efficient:
+\vspace*{-2mm}
+\begin{itemize}
+    \item 1. Partition splitting
+    \item 2. Locating good match of free partition (hole)
+    \item 3. Partition de-allocation and coalescing: Only merge Buddies
+\end{itemize}
+\vspace*{-2mm}
+\textbf{Main idea:}\\
+Free block is split into half repeatedly to meet request. The two halves
+forms a sibling blocks (buddy blocks). When buddy blocks are both free, can
+be merged to form larger block.
+\includegraphics[height=3cm,width=\linewidth]{buddy.PNG}
+\subsection{Buddy Implementation}
+Keep an array A[0…K], where $2^K$ is the largest allocatable
+block size. Each array element A[J] is a linked list which keep tracks of free block(s) of the size $2^J$. Each free block is indicated just by the starting address.\\
+\textcolor{blue}{Runtime}
+\vspace*{-2mm}
+\begin{itemize}
+    \item N = num partitions
+    \item Allocation: $O(lgN)$
+    \item Deallocation: $O(N)$: need to go thru all partitions to find, so at most n.(when all partitions at A[0], yours is at last of A[0])
+    \item Merging $O(lgN)$ could have a case where you create a free buddy that merges with another free buddy and so on and on till top.  
+\end{itemize}
+\vspace*{-2mm}
+\textbf{Allocation:} find smallest block that fits, if do not exist,
+recursively split bigger blocks until required level has buddy blocks.\\
+\textbf{Deallocation}: Find block and remove, recursively merge until no 
+more to merge.\\
+\textbf{Merging}: 2 blocks B and C are buddy of size $2^S$, if
+the Sth bit of B and C is a complement the leading bits up to Sth bit of B
+and C are the same.
+\section{Disjoint Memory}
+Process memory space can now be in \textbf{disjoint physical memory
+locations.}
+\subsection{Paging}
+The physical memory is split into regions of fixed size
+(decided by hardware) known as physical frame.\\
+The logical memory of a process is similarly split into
+regions of same size = logical page.\\
+At execution time, the pages of a process are loaded into any
+available memory frame.
+\vspace*{-2mm}
+\begin{itemize}
+    \item Diff parts of process are scattered into diff parts of 
+    physical mem, but logically they are contigous.
+    \item Occupied physical memory region can be disjoined!: Need mapping.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Page Table}
+Need a general lookup table based approach: logical page maps to physical
+address:address translation.\\
+Program code uses logical memory address. However, to actually access the value, physical memory address is needed.\\
+To locate a value in physical memory in paging scheme, we
+need to know:
+\vspace*{-2mm}
+\begin{itemize}
+    \item \textbf{F}, the physical frame #
+    \item \textbf{Offset}, displacement from the beginning of the physical frame
+    \item Physical Address = F x size of physical frame + Offset
+\end{itemize}
+\vspace*{-2mm}
+Design Decision Tricks that simplify the address
+translation calculation:
+\vspace*{-2mm}
+\begin{itemize}
+    \item 1. Keep frame size (page size) as a power-of-2
+    \item 2. Physical frame size == Logical page size
+\end{itemize}
+\vspace*{-2mm}
+Given: 1. Page/Frame size of 2n \\ 2.m bits of logical address\\
+Logical Address LA: 1. p = Most significant m-n bits of LA \\
+2. d = Remaining n bits of LA\\
+Use p to find frame # f:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Use page table to find f,
+    \item Physical Address PA: PA = f*2n + d
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Paging Evaluation}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Paging removes \textcolor{blue}{external fragmentation} by
+    definition: if there is a free page, anyone can use it, no left-over
+    physical memory region.
+    \item Clear separation of logical and physical address space - Allow great flexibility, Simple address translation.
+    \item Paging can still have \textcolor{blue}{internal fragmentation}: 
+    Logical memory space may not be multiple of page size, but if you need 10 pages, only 10th page will have internal fragmentation. only waste(internal frag) a page per process, so not a very big issue.
+    \item \textcolor{red}{Issues}: Require two memory access for every memory reference. 1 to read the page table entry to get frame #, 2 to access the actual memory item.
+    \item \textcolor{purple}{Qns} Assembly code: load r1, [2106] \t inc r1, \t store r1, [2106]: with paging, how many ref to memory will the code
+    above have? Answer: 8 or more. Why? For every access (load or store) need to go to table and then do access so now 2*2. but since von neumann archi, need to get inst from memory for load, store, inc: these also need access page table too! For each inst (3 here), need to look at logical addr, then fetch the inst itself, so 2*2*3*3, AND each inst has addr, so may need multiple trips to mem to get inst.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Paging Implementation}
+OS stores page table information with the process information (e.g.
+PCB). Page table key part of Memory context of a process.
+\subsection{TLB}
+Want to solve issue with 2 accesses.\\
+Saves the recently accessed page table entries.\\
+Modern processors provide specialized on-chip component to
+support paging: \textbf{Translation Look-Aside Buffer (TLB)}: a cache 
+of a few (tens) page table entries.\\
+Faster than registers.\\
+\textbf{Logical address translation with TLB}:\\
+ Use page # to search TLB associatively:
+ \vspace*{-2mm}
+\begin{itemize}
+    \item Entry found (TLB-Hit):Frame # is retrieved to generate physical address.
+    \item Entry not found (TLB-Miss):Memory access to access the full page table, Retrieved frame # is used to generate physical address and update TLB
+\end{itemize}
+\vspace*{-2mm}
+\includegraphics[height=3cm,width=\linewidth]{paging.PNG}
+Memory access time Impact:
+= P(TLB hit)*Latency(hit) + P(TLB miss)*Latency(miss)
+= 90\% x (1ns + 50ns) + 10\%(1ns + 50ns + 50ns)
+= 56ns\\
+TLB hitrate: $99\%$
+\subsection{TLB, Context Switching}
+TLB part of hardware context for process!\\
+When a context switch occurs:
+\vspace*{-2mm}
+\begin{itemize}
+    \item TLB entries are flushed, so that new process will not get incorrect translation.
+    \item OS has special inst to help clear the TLB
+    \item TLB could also be saved and restored later: expensive! Not done
+    often.
+\end{itemize}
+\vspace*{-2mm}
+Hence, when a process resume running: Will encounter many TLB misses to fill the TLB, performance suffers. It is possible to place some entries initially, e.g. the code pages to reduce TLB misses.
+Upon a context switch from proc A $\longrightarrow$ B: which of the following will be saved in the context of a process?\\
+\vspace*{-2mm}
+\begin{itemize}
+    \item Process A's data in physical memory: No! we are not saving any content of the data. no data saving in context switch.
+    \item A's logical mem: this is a trick, data is same as in the physical mem, same data, diff name.
+    \item A's page tables: Yes and No, we are only saving the pointer to the start of the page table since page tables are huge!
+    \item A's TLB content: assumes A has some TLB. No! If we switch to B, we may run into addresses that are similar to B's logical addresses but lead to A's mem, and thus be invalid mem addr! Not good to keep A's TLB for B.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Protection}
+The basic paging scheme can be easily extended to provide
+memory protection between processes using: 1. Access-Right Bits: whether the page is read write, read only, executable.\\
+The logical memory range is usually the same for all processes. However, not all process utilize the whole range. Some pages are out-of-range for a
+particular process. Thus we have:
+2. Valid Bit: Attached to each page table entry to indicate:
+Whether the page is valid for the process to access.\\
+OS will set the valid bits when a process is running, when page given
+to process. Memory access is checked against this bit.\\
+Everytime access mem will see this.\\
+Memory access is checked against the access right bits.
+\subsection{Page Sharing}
+Page table can allow several processes to share the same physical memory
+frame. Use the same physical frame # in the page table entries.\\
+Possible Usage:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Shared code pages: same code used by multiple procs.
+    \item Implement Copy-On-Write: parent and child process
+    can share a page until one writes to it.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Segmentation}
+Segmentation and Paging trying to solve a different problem. Segmentation 
+allows us to have different regions in a contiguous memory
+space and still allow them grow/shrink freely
+but still check whether a memory access in a region is in-range or not.
+\textbf{Idea}:
+Separate the regions into multiple memory segments, each have name, #.
+Logical memory space of a process is now a collection of segments.
+\subsection{Segmentation: Logical Address Translation}
+Segment name is usually represented as a single num.
+All memory reference is now specified as: Logical address \textcolor{blue}{<SegID, Offset>}
+SegID is used to look up \textcolor{purple}{<Base, Limit>} of the segment in
+a segment table. Physical Address PA = Base + Offset
+\includegraphics[height=3cm,width=\linewidth]{segmentation.PNG}
+\subsection{Segmentation Summary}
+Naturally matches programmer's view of memory.
+\textcolor{Green}{Pros:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Each segment is an independent contiguous memory space
+    \item Can grow/shrink, be protected/shared independently
+    \item Efficient bookkeeping: can take a 1TB long segment and describe it with a base and an offset. No need to keep info on many pages. Can integrate into hardware context. Protect large regions of memory with 1 bit.
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{red}{Cons:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Segmentation requires variable-size contiguous memory regions $\longrightarrow$ can cause external fragmentation
+\end{itemize}
+\vspace*{-2mm}
+\subsection{S + P}
+\includegraphics[height=3cm,width=\linewidth]{sandp.PNG}
+Each segment is now composed of several pages instead of a
+contiguous memory region. Break segment into pieces, can store them in
+potentially different pieces in memory.
+\vspace*{-2mm}
+\begin{itemize}
+    \item Essentially, each segment has a page table. Solves the external frag problem that we had earlier.
+    \item Segment can grow by allocating new page then add to its page table
+and similarly for shrinking.
+\end{itemize}
+\vspace*{-2mm}
+\section{Virtual Memory Management}
+Split the logical address space into small chunks: Some chunks reside in physical memory (RAM), Other are stored on secondary storage (DISK).
+\subsection{Locality Principles}
+Most programs exhibit these behaviors, formalized as locality principles:
+\vspace*{-2mm}
+\begin{itemize}
+    \item \textcolor{red}{Temporal Locality:} Memory address which is used is likely to be used again.
+    \item After a page is loaded to physical memory, it is likely to be accessed in near future = Cost of loading page is amortized.
+    \item \textcolor{purple}{Spatial Locality:} Memory addresses close to a used address is likely to be used.
+    \item A page contains contiguous locations that is likely to be accessed in near future. Later access to nearby locations will not cause page fault.
+\end{itemize}
+\vspace*{-2mm}
+Most time is spent on a relatively small part of code.
+In a period of time, accesses are made to a relatively small part of
+data.
+\subsection{Virtual Page Table Structure}
+Problems with huge page table:
+\vspace*{-2mm}
+\begin{itemize}
+    \item High overhead
+    \item Fragmented page table:
+    \item Page table occupies several memory pages
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Virtual: Direct Paging}
+Direct Paging: keep all entries in a single table.
+With $2^p$ pages in logical memory space, we have:
+\vspace*{-2mm}
+\begin{itemize}
+    \item p bits to specify one unique page
+    \item $2^p$ page table entries (PTE), each contains: physical frame #, additional information bits.
+\end{itemize}
+\vspace*{-2mm}
+Real Life Example:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Page size: 4KB (12 bits for offset)
+    \item VA 64-bit, 16 ExaBytes of virtual address space
+    \item Physical memory 16GB,  PA 34 bits
+    \item How many virtual pages? $2^{64}/2^{12} = 2^{52}$ 
+    \item How many physical pages? $2^{34}/2^{12} = 2^{22}$
+    \item How many bits for physical page ID? 22 bits = 3Bytes
+    In reality, PTE size = 8Bytes (with other flags)
+\end{itemize}
+\vspace*{-2mm}
+Page table size = $2^{52} * 8B = 2^{55}B$ per process!
+\subsection{Hierarchical Paging}
+Not all processes uses the full range of virtual memory space thus Full
+page table is a waste! \textbf{Idea}:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Split the full page table into regions
+    \item Maintain pointers to each region, use NULL pointer to indicate empty region instead of using empty page tables.
+    \item Only a few regions are used, As memory usage grows, new region can be allocated.
+    \item This idea is similar to split logical memory space into pages
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Description:}
+Split page table into smaller page tables, Each with a page table #:
+\vspace*{-2mm}
+\begin{itemize}
+    \item If the original page table has $2^P$ entries:
+    With $2^M$ smaller page tables, M bits is needed to uniquely identify one page table. Each smaller page table contains $2^{P-M}$ entries.
+    \item To keep track of the smaller page tables, A single \textbf{page
+    directory} is needed. Page directory contains $2^M$ indices to locate
+    each of the smaller page tables.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{\textcolor{green}{Advantages} of Hierarchical Paging}
+\vspace*{-2mm}
+\begin{itemize}
+    \item We can have empty entries in the page directory: The corresponding page tables need not be allocated!
+    \item Assume only 3 page tables are in use. Overhead = 1 page directory + 3 smaller page tables.
+\end{itemize}
+\vspace*{-2mm}
+We want to make sure size of smaller page tables is same size as page.
+Why? Cos going beyond the page requires you to store 
+parts with the same page consecutively in memory, 
+which could be a problem. Or it is going to be wasted, 
+if you don't fill it up to the brim will have internal fragmentation.
+\includegraphics[height=3.5cm,width=\linewidth]{nlevelpagetable.PNG}
+\subsection{Inverted Page Table}
+\includegraphics[height=3.5cm,width=\linewidth]{invert.PNG}
+Page table is a per-process information. With M processes in memory, there are M independent page tables.
+\vspace*{-2mm}
+\begin{itemize}
+    \item Only N physical memory frames can be occupied
+    \item Out of the M page tables, only N entries is valid
+    \item Huge waste: N valid entries << Overhead of M page tables.
+\end{itemize}
+\vspace*{-2mm}
+Idea:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Keep a \textbf{single} mapping of physical frame to <pid, page#>
+    \item page# is not unique among processes
+    \item pid + page# can uniquely identify a memory page
+    \item Entries are ordered by frame # To lookup page X, need to search the whole table
+\end{itemize}
+\vspace*{-2mm}
+\textbf{Evaluation}:
+\textcolor{green}{Pros}: Huge saving: One table for all processes
+\textcolor{red}{Cons}: Slow translation.
+\section{Virtual Page Replacement Algorithms}
+Suppose there is no free physical memory frame during a page fault:
+Need to evict (free) a memory page. When a page is evicted:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Clean page: hasn't been written to at all since the last time it was brought from disk to memory
+    \item Dirty page: modified, need to write back.
+\end{itemize}
+\vspace*{-2mm}
+Need to consider if it is shared as well! evicting this page would cause a
+page fault in many processes... all of them relying on that page, not a v
+smart soln. Note for replacement: we do not check what part of the page is
+accessed: we only care WHICH page is accessed 
+only will see page 8 multiple times, not bit1 of page 8 and so on
+\subsection{OPT}
+Replace the page that will not be used again for the longest period
+of time. \textbf{Guarantees minimum # of page faults}. Not realistic, 
+need future knowledge of mem refs.
+\subsection{FIFO}
+Memory pages are evicted based on their loading time: Evict the oldest
+memory page. Simple to implement:
+\vspace*{-2mm}
+\begin{itemize}
+    \item OS maintain a queue of resident page #s
+    \item Remove the first page in queue if replacement is needed
+    \item Update the queue during page fault trap
+    \item No hardware support needed.
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{red}{Cons}:
+\vspace*{-2mm}
+\begin{itemize}
+    \item If physical frame increases (e.g. more RAM) the # page fault increases.
+    \item Does not exploit temporal locality!
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Least Recently Used}
+General Idea:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Make use of temporal locality, Replace the page that has not been used in the longest time.
+    \item Expect a page to be reused in a short time window.
+    \item Have not used for some time: most likely will not be used again.
+\end{itemize}
+\vspace*{-2mm}
+Notes: Attempts to approximate the OPT algorithm. 
+\textbf{Gives good results generally}.
+\subsection{LRU Implementation}
+Implementing LRU is not easy: 1. Need to keep track of the "last access time" somehow. 2. Need substantial hardware support.
+\textbf{Approach A - Use a Counter:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item A logical "time" counters, which is incremented for every memory reference.
+    \item Page table entry has a "time-of-use" field.
+    \item Store the time counter value whenever reference occurs
+    \item Replace the page with smallest "time-of-use"
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{red}{Problems:} 1. Need to search through all pages. 2. "Time-of-use" is forever increasing (overflow possible!)\\
+\textbf{Approach B - Use a "Stack":}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Maintain a stack of page #s. If page X is referenced
+    \item Remove from the stack (for existing entry)
+    \item Push on top of stack
+    \item Replace the page at the bottom of stack
+    \item No need to search through all entries
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{red}{Problems:} 1. Not a pure stack: Entries can be removed from
+any where in the stack. 2. Hard to implement in hardware.
+\subsection{Second-Chance (CLOCK)}
+Modified FIFO to give a second chance to pages that are accessed. Each PTE now maintains a "reference bit": 1 = Accessed, 0 = Not accessed.\\
+\textbf{Algorithm:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item 1. The oldest FIFO page is selected
+    \item 2. If reference bit == 0: Page is replaced
+    \item 3. If reference bit == 1: Page is given a 2nd chance: Reference
+    bit cleared to 0, Arrival time reset and page taken as newly loaded.
+    Next FIFO page is selected, go to Step 2.
+    \item Degenerate into FIFO algorithm when all pages has ref bit == 1.
+\end{itemize}
+\vspace*{-2mm}
+\section{Virtual Mem: Frame Allocation}
+What is the best way to distribute the N frames among M processes?\\
+\textbf{Simple Approaches:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Equal Allocation: Each process get N / M frames
+    \item Proportional Allocation: Processes are different in size (memory usage) Let $size_p$ = size of process p, $size_{total}$ = total size of all processes. Each process get $size_p/size_{total}*N$ frames.
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{blue}{Local Replacement}: Victim page are selected among pages of the process that causes page fault.
+\vspace*{-2mm}
+\begin{itemize}
+    \item \textcolor{green}{Pros}: Frames allocated to a process remain
+    constant: Performance is stable between multiple runs.
+    \item \textcolor{red}{Cons}: If frame allocated is not enough, might
+    page fault very frequently. If other processes has spare pages, our proc
+    cannot make use of it.
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{purple}{Global Replacement}: Victim page can be chosen among all physical frames: Process P can take a frame from Process Q by evicting Q's frame during replacement!
+\vspace*{-2mm}
+\begin{itemize}
+    \item \textcolor{green}{Pros}: Allow self-adjustment between processes: Process that needs more frames can get from other.
+    \item \textcolor{red}{Cons}: 1. Badly behave process can affect others. 2. Frames allocated to a process can be different from run to run
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Thrashing}
+Insufficient physical frames for processes decreases 
+throughput of system, as processes continually page fault, 
+and heavy I/O to bring non-resident pages into RAM. This problem is
+known as thrashing.\\
+\textbf{Hard to find the right # of frames:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item If \textcolor{purple}{Global replacement} is used: A thrashing process "steals" page from other process $\longrightarrow$ cause other process to thrash (Cascading Thrashing)
+    \item If \textcolor{blue}{Local replacement} is used: Thrashing can be limited to one process. But that single process can hog the I/O and degrade the performance of other processes.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{Working Set Model}
+Observation:
+\vspace*{-2mm}
+\begin{itemize}
+    \item The set of pages referenced by a process is relatively constant in a period of time (locality). However, as time passes, the set of pages can change.
+    \item E.g After 1 function terminates, the references will change to another set of pages: may not have same variables and code.
+\end{itemize}
+\vspace*{-2mm}
+Using these observations on locality:
+\vspace*{-2mm}
+\begin{itemize}
+    \item With the same set of pages in frame: No/few page fault until
+    process transits to new locality.
+    \item In a new locality: A process will cause page fault for the set of
+    pages
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{blue}{Working Set Model:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Define Working Set Window $\delta$: An interval of time
+    \item $W(t,\delta) =$ active pages in the interval at time t.
+    \item \textbf{\textcolor{blue}{Goal}}: Allocate enough frames for pages in $W(t,\delta)$ to reduce possibility of page fault.
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{red}{Transient region:}working set changing in size \\
+\textcolor{green}{stable region:} working set about the same for a long time.
+\includegraphics[height=3cm,width=\linewidth]{workingset.PNG}
+Accuracy of working set model is directly affected by the
+choice of D.\\
+\textcolor{purple}{Too small:} May miss pages in the current locality
+\textcolor{red}{Too big:} May contain pages from different locality
+\section{File Management}
+File System provides:
+\vspace*{-2mm}
+\begin{itemize}
+    \item An abstraction on top of the physical media, such that we can abstract away physical characteristics, and just read and write and observe the latency.
+    \item A high level resource management scheme   
+    \item Protection between processes and users
+    \item Sharing between processes and users
+\end{itemize}
+\vspace*{-2mm}
+General Criteria:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Self-Contained: Should be able to "plug-and-play" on another system.
+    \item Persistent: even when power not on, Beyond the lifetime of OS and processes.
+    \item Efficient: Provides good management of free and used space. Minimum overhead for bookkeeping information
+\end{itemize}
+\vspace*{-2mm}
+\textbf{Key difficulty of mem management vs file management:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item We are accessing memory at every instruction:
+    to get the instruction then store the result
+    so mem is accessed ALOT multiple times per 
+    instruction, so needs to be hyper fast 
+    accessed usually without OS involvement.
+    \item File system operations 
+    are not as latency critical as
+    mem management operations
+    \item when we are talking to mem, we don't involve OS unless there is
+    some catastrophe, some page fault.  
+    \item but when we are talking to FS we are using sys calls, explicit  
+    commands to OS to deal with the FS.
+\end{itemize}
+\vspace*{-2mm}
+\section{File Systems Abstractions}
+\textcolor{purple}{File System:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item  Consists of a collection of files and directory structures
+    \item File: An abstract storage of data
+    \item Directory (Folder): Organization of files
+\end{itemize}
+\vspace*{-2mm}
+\subsection{File}
+Represent a logical unit of information created by process.
+Essentially an ADT have a set of common operations with various possible
+implementation. Contains:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Data: Information structured in some ways
+    \item Metadata(attributes): Additional information associated with the file (Name, Identifier, Type, Size, Protection, Time, Date and owner, how to access file)
+\end{itemize}
+\vspace*{-2mm}
+\subsection{File Type}
+Different FS has different naming rule: 
+\textbf{Usual}: \textcolor{blue}{Name.Extension}
+Each file type has: 1. An associated set of operations.\\ 2. Possibly a specific program for processing. \\
+\textbf{Common file types:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Regular files: contains user information. 2 types: 1. ASCII can 
+    be read/displayed as/is. e.g text, codes. 2. Binary files: Have a predefined internal structure that can be processed by
+    specific program, e.g executables, pdf, mp3/4, images.
+    \item Directories: system files for FS structure
+    \item Special files: character/block oriented
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{red}{Distinguishing File Type}:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Use file extension: e.g Windows
+    \item Use embedded information in the file: Unix, stored at the beginning of the file. Commonly known as magic number.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{File Protection}
+Controlled access to the information stored in a file. Types of Access:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Read/Write/Execute
+    \item Append(add new info to EOF)/Delete/List(Read metadata of a file)
+\end{itemize}
+\vspace*{-2mm}
+Protection, How? Most common: Restrict access base on the user identity.\\
+Access Control List:
+A list of user identity and the allowed access types.
+\vspace*{-2mm}
+\begin{itemize}
+    \item In UNIX, Minimal ACL (the same as the permission bits)
+    \item or Extended ACL (added named users / group )
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{green}{Pros}: Very customizable.
+\textcolor{red}{Cons} Additional information associated with file.\\
+\subsection{Permission Bits}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Classified the users into three classes: 1. Owner: The user who
+    created the file. 2. Group: A set of users who need similar access to a
+    file. 3. Universe: All other users in the system. Bits appear in that
+    order.
+    \item Example (Unix) Define permission of three access types (Read/Write/Execute) for the 3 classes of users.
+    \texttt{ls –l} to see the permission bits for a file
+\end{itemize}
+\vspace*{-2mm}
+\subsection{File Data}
+Operations on File Metadata.
+\vspace*{-2mm}
+\begin{itemize}
+    \item Rename, Change attributes: file access, dates, ownership.
+    \item Read attributes.
+\end{itemize}
+\vspace*{-2mm}
+\textbf{Structure:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Array of bytes(UNIX): No interpretation of data: just raw bytes. Each byte has a unique offset (distance) from the file start.
+    \item Fixed length records:Array of records, can grow/shrink. Can jump to any record easily: Offset of the Nth record = size of Record * (N-1).
+    \item Variable length records: Flexible but harder to locate a record
+\end{itemize}
+\vspace*{-2mm}
+\textcolor{red}{Access Methods}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Sequential Access: Data read in order from start. Cannot skip but can be rewound (tape).
+    \item Random Access: Data can be read in any order (disk can move to the
+    position we want, go directly to the point we want) Use 1. Read(offset):
+    explicitly state the position to be accessed. 2. Seek( Offset ): A
+    special operation is provided to move to a new location in file.
+    \item Direct Access: Used for file contains fixed-length records. Allow random access to any record directly. Very useful where there is a large amount of records. e.g. In database. Random access = special case.
+\end{itemize}
+\vspace*{-2mm}
+\subsection{File Operations}
+OS provides file operations as system calls:
+\begin{itemize}
+    \item Provide protection, concurrent and efficient access.
+    \item Maintain information.
+\end{itemize}
+\vspace*{-2mm}
+E.g Create, Open, Read, Write, Repositioning: AKA seek
+Move the current position to a new location
+No actual Read/Write is performed, Truncate: Removes data between specified
+position to end of file.\\
+\textbf{Information kept for an opened file:}
+\vspace*{-2mm}
+\begin{itemize}
+    \item File Pointer: Current location in file
+    \item Disk Location: Actual file location on disk
+    \item Open Count: How many process has this file opened? How many processes are using this file? Useful to determine when to remove the entry in table.
+\end{itemize}
+\vspace*{-2mm}
+\includegraphics[height=3cm,width=\linewidth]{fileops.PNG}
+What is a good way to organize the open-file information? Common approach
+is to have 2 diff tables:
+\vspace*{-2mm}
+\begin{itemize}
+    \item 1. System-wide open-file table: One entry per unique file. 
+    \item 2. Per-process open-file table: keeps track of all files that are open in that particular process: entry in this table points to prev table. One entry per file used in the process. Each entry points to the system-wide table.
+\end{itemize}
+\vspace*{-2mm}
+\textbf{Process Sharing Case 1}:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Two processes using different file descriptors: I/O can occur at independent offsets
+    \item Example: Two process open the same file (fork then open). Same
+    process open the file twice (diff offset, so diff part of same file).
+\end{itemize}
+\vspace*{-2mm}
+\textbf{Process Sharing Case 2}:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Two processes using the same file descriptor. Only one offset è I/O changes the offset for the other process 
+    \item Example: fork() after file is opened
+\end{itemize}
+\vspace*{-2mm}
+\section{Direction}
+Directory (folder) is used to:
+\vspace*{-2mm}
+\begin{itemize}
+    \item 1. Provide a logical grouping of files: The user view of directory
+    \item 2. Keep track of files: The actual system usage of directory
+\end{itemize}
+\vspace*{-2mm}
+\textbf{Ways to structure directory:} Single-Level, Tree-Structure, DAG, Graph
+\textbf{Tree-Structure}
+\vspace*{-2mm}
+\begin{itemize}
+    \item Directories can be recursively embedded in other directories: Naturally forms a tree structure
+    \item Two ways to refers to a file: Absolute Pathname: Path from root directory to the file.
+    \item Relative Pathname: Directory names followed from the current working directory (CWD). CWD can be set explicitly or implicitly changed by moving into a new directory under shell prompt
+\end{itemize}
+\vspace*{-2mm}
+\textbf{DAG}
+If a file can be shared:
+\vspace*{-2mm}
+\begin{itemize}
+    \item Only one copy of actual content "Appears" in multiple directories
+    With different path names, then tree structure becomes DAG
+\end{itemize}
+\vspace*{-2mm}
+2 Implementations:\\
+\textbf{1. Unix Hard Link}\\
+A and B has separate pointers that point to the actual file F in disk, they
+share the file.\\
+\textcolor{green}{Pros}: Low overhead, only pointers are added in directory.
+\textcolor{red}{Cons}: Deletion problems: e.g. If B deletes F? If A deletes F?\\
+Command: \texttt{ln}\\
+\textbf{2. Unix Symbolic Link}\\
+B creates a special link file, G, contains the path name of F. When G is
+accessed: Find out where is F, then access F.\\
+\textcolor{green}{Pros}: Simple deletion: If B deletes: G deleted, not F. 
+If A deletes: F is gone, G remains (but not working).
+\textcolor{red}{Cons}: Larger overhead: Special link file take up actual
+disk space. Command: \texttt{ln -s}.\\
+\textbf{General Graph}: Have loop (potentially symbolic link)! Not
+desirable. Hard to traverse, must prevent infinite loops. 
+\section{File System Implementations}
+Disk Organisation
+\begin{itemize}
+    \item Master Boot Record (MBR) at sector 0 with partition table. Followed by one or more partitions. Each partition can contains an independent file system.
+    \item A file system generally contains: OS Boot-Up information
+    Partition details: Total Number of blocks, Number and location of free disk blocks, Directory Structure, Files Information, Actual File Data.
+\end{itemize}
+\subsection{File Info and Data Implementation}
+Basically focuses on how to allocate file data on disk.
+\begin{itemize}
+    \item Logical view of a file: A collection of logical blocks
+    \item When file size != multiple of logical blocks, Last block may contain wasted space, i.e. internal fragmentation.
+    \item A good file implementation must: Keep track of the logical blocks, Allow efficient access, Disk space is utilized effectively. Prevent creating huge data structures bigger than data to look up files.
+\end{itemize}
+\textcolor{blue}{System 1: Contiguous}\\
+Allocate consecutive disk blocks to a file.
+\begin{itemize}
+    \item \textcolor{green}{Pros}: Simple to keep track: Each file only needs: Starting block number + Length. Fast access (only need to seek to first block).
+    \item \textcolor{red}{Cons}: External Fragmentation. Think of each file as a variable-size "partition". Over time, with file creation/deletion, disk can have many small "holes". File size need to be specified in advance: hard for it to grow!(limit file size)
+\end{itemize}
+\textcolor{blue}{System 2: Linked List}\\
+Keep a linked list of disk blocks. Each disk block stores: 1. The next disk
+block number (i.e. act as pointer). 2. Actual file data. File information stores: First and last disk block number.
+\begin{itemize}
+    \item \textcolor{green}{Pros}: No external fragmentation.
+    \item \textcolor{red}{Cons}: Random access in a file is very slow. Part of disk block is used for pointer. Less reliable (case: wrong pointer).
+\end{itemize}
+\textcolor{blue}{System 3: Linked List 2}\\
+Move all the block pointers into a single table known as File Allocation Table (FAT) (contains ONLY pointers, put pointers for all sectors in the
+system into FAT). FAT is in memory at all time. Simple yet efficient.
+\includegraphics[height=4cm,width=\linewidth]{fattable.PNG}
+\begin{itemize}
+    \item \textcolor{green}{Pros}: Faster Random Access. The linked list traversal now takes place in memory. Also does not use 1 pointer of space to each block : FAT - potential saving space.
+    \item \textcolor{red}{Cons}: Random access in a file is very slow. Part of disk block is used for pointer. Less reliable (case: wrong pointer).
+\end{itemize}
+\textcolor{blue}{System 4: Indexed Allocation}\\
+Each file has an index block (per file table). An array of disk block addresses. 
+IndexBlock[N] == Nth Block address. Equivalent to having small direct page table as opposed to FAT which is like an inverted page table.
+\begin{itemize}
+    \item \textcolor{green}{Pros}: Lesser memory overhead: Only index block
+    (per file table) of opened file needs to be in memory. Fast direct
+    access. Also solve problem of losing rest of list when 1 pointer is
+    lost: we still know the order of blocks even if one in the middle is
+    corrupted.
+    \item \textcolor{red}{Cons}: Limited maximum file size. Max number of blocks == Number of index block entries. Index block overhead.
+\end{itemize}
+Variations to Indexed Allocations:
+\begin{itemize}
+    \item Linked scheme:Keep a linked list of index blocks. Each index block contains the pointer to next index block.
+    \item \textcolor{blue}{Multilevel index:} Similar idea as multi-level paging. First level index block points to a number of second level index blocks. Each second level index blocks point to actual disk block. Can be generalized to any number of levels.
+    \item \textcolor{blue}{Combined scheme}: Combination of direct indexing and multi-level index scheme. 
+    \item Example:Inode below.
+\end{itemize}
+\includegraphics[height=4cm,width=\linewidth]{inode.PNG}
+\section{Free Space Management}
+To perform file allocation: Need to know which disk block is free. i.e. maintain a free space list. Free space management:
+\begin{itemize}
+    \item Maintain free space information.
+    \item \textbf{Allocate:} Remove free disk block from free space list. Done when file is created or enlarged (appended)
+    \item \textbf{Free}: Add free disk block to free space list. Done when file is deleted or truncated.
+\end{itemize}
+
+\subsection{Free Space: Bitmap}
+Each disk block is represented by 1 bit
+q E.g. 1 == free, 0 == occupied.
+\begin{itemize}
+    \item \textcolor{green}{Pros}: Provide a good set of manipulations: E.g.
+    can find the first free block, n-consecutive free blocks easily by bit
+    level operation.
+    \item \textcolor{red}{Cons}: Need to keep in memory for efficiency
+    reason, can have significant space overhead.
+\end{itemize}
+\subsection{Free Space: Linked List}
+Use a linked list of disk blocks: Each disk block contains: 1. A number of
+free disk block numbers. 2. A pointer to the next free space disk block.
+\begin{itemize}
+    \item \textcolor{green}{Pros}: Easy to locate free block. Only the first pointer is needed in memory, though other blocks can be cached for efficiency.
+    \item \textcolor{red}{Cons}: High overhead, can be mitigated by storing
+    the free block list in free blocks! Each free block points to another
+    free block! since they are free blocks, we do not care about their
+    content so no overhead since 'stealing' space from free blocks once we
+    want to use it, will be available to us.
+\end{itemize}
+\section{Directory Implementation}
+The main tasks of a directory structure:
+\begin{itemize}
+    \item 1. Keep tracks of the files in a directory. Possibly with the file metadata.
+    \item 2. Map the file name to the file information
+\end{itemize}
+Remember:
+\begin{itemize}
+    \item File must be opened before use. Something like open( "data.txt" );
+    \item The purpose of the open operation: Locate the file information using pathname + file name. Pathname = path from root.
+    \item Given pathname: Need to recursively search the directories along
+    the path to arrive at the file information
+    \item Sub-directory is usually stored as file entry with special type
+    in a directory
+\end{itemize}
+\subsection{Directory: Linked List}
+Directory consists of a list: Each entry represents a file. We store:
+\begin{itemize}
+    \item File name (minimum) and possibly other metadata.
+    \item File information or pointer to file information
+    (start block and the length of file).
+\end{itemize}  
+Locate a file using list:
+\begin{itemize}
+    \item Requires a linear search: Inefficient for large directories and/or deep tree traversal. 
+    \item Common solution: Use cache to remember the latest few searches.
+    User usually move up/down a path.
+\end{itemize}
+\subsection{Directory: Hash Table}
+Each directory contains a: Hash table of size N. To locate a file by file name:
+\begin{itemize}
+    \item File name is hashed into index K from 0 to N-1
+    \item HashTable[K] is inspected to match file name. Usually chained collision resolution is used. i.e., file names with same hash value is chained together to form a linked list with list head at HashTable[K].
+\end{itemize}
+Evaluation:
+\begin{itemize}
+    \item \textcolor{green}{Pros}: Fast lookup, no linear search.
+    \item \textcolor{red}{Cons}: Hash table has limited size (need to 
+    provide in advance). Depends on good hash function.
+\end{itemize}
+Can also combine: small directories use linked-list, big use hash table
+\subsection{Directory: File Information}
+File information consists of: 1. File name and other metadata, 2. Disk
+blocks information.
+Two common approaches:
+\begin{itemize}
+    \item 1. Store everything in directory entry. A simple scheme is to have a fixed size entry. All files have the same amount of space for information.
+    \item 2. Store only file name and points to some data structure for
+    other info.
+\end{itemize}
+If other file info is bulky and big, then better to store elsewhere: is \textcolor{blue}{\textbf{good to keep directory small}}.
+\section{File System Together}
+At runtime, when user interacts with file:
+\begin{itemize}
+    \item Run-time information is needed
+    \item Maintained by OS in memory
+\end{itemize}
+[Recap] Common in-memory information:
+\begin{itemize}
+    \item \textcolor{blue}{System-wide open-file table}: Contain a copy of file information for each open file + other info.
+    \item \textcolor{blue}{Per-process open-file table:} Contains pointer to system-wide table + other info. 
+    \item \textcolor{blue}{Buffers} for disk blocks read from/written to disk.
+\end{itemize}
+
+\subsection{File Operation: Create}
+Want to create: ".../\textbf{parent}/F".
+\begin{itemize}
+    \item 1. We start from root, then look for directories and see if have access then keep looking into directories until get to \textbf{parent}
+    \item 2. Make sure no duplicates of F in parent.
+    \item 2.5. Quite alot of operations to find parent huge number of disk operations to create new file: what helps: directory struct being cached in mem, which is easier to cache if  directory is small: this is why we want to sep file data and info from directory struct.
+    \item 3. Use free space list to find free disk block(s).
+    \item 4. Add an entry to parent directory: With relevant file information. File name, disk block information etc
+\end{itemize}
+Disadv is that need to look in many places for info on file if sep file
+data and info from directory struct.
+\subsection{File Operation: Open}
+Want: Process P open file "/…/…/…/F":
+\begin{itemize}
+    \item 1. Search system-wide table for existing entry E. If found: Creates an entry in P's table to point to E. Return a pointer to this entry. Else: continue to next step.
+    \item 2. Use full pathname to locate file F. If not found, open operation terminates with error. When F is located, its file information is loaded into a new entry E in system wide table. Creates an entry in P's table to point to E
+    \item 3. Return a pointer to this entry.
+\end{itemize}
+The returned pointer is used for further read/write operation.
+\includegraphics[height=4cm,width=\linewidth]{fileopen.PNG}
+\section{Disk IO Scheduling}
+\subsection{Simpler Approaches}
+\begin{itemize}
+    \item FCFS: do as requests arrive, wasteful.
+    \item SSF (Shortest Seek First) "SJF" modified for the disk context
+    Greedy!
+    \item SCAN (Elevator) Bi-Direction, moves from innermost to outer and vice versa.
+    \item C-SCAN: Only from Outermost to innermost.
+    \item For both scans sort requests by how near they are to current: for [13, 14, 2, 10, 17, 21, 7]: assume we are at 13: 14 is close, 2 is not on the way, 10 is already past, so go 17 next then next 21 then no one else after 21: no need to go all the way to end of tracks. Now turn and go back: pickup locations missed previously: 10, 7, 2, then go back up again.
+\end{itemize}
+\subsection{Newer Approaches}
+\begin{itemize}
+    \item Deadline - 3 queues for I/O requests(optimisation to add better
+    response time, make sure individual requests are served better
+    not just overall time of all requests ): 1. Sorted. 2. Read FIFO - read
+    requests stored chronologically. 3. Write FIFO - write requests stored chronologically.
+    \item noop (No-operation) - Deadline but no Sorted queue.
+    \item cfq (Completely Fair Queueing) - time slice and perprocess sorted queues. Like lottery scheduling decide how long each process gets to use disk. 
+    \item bfq (Budget Fair Queuing) (Multiqueue) - fair sharing based on
+    the number of sectors requested. Dont fair-share time, share based on
+    amount of data written/read want to make sure everyone gets to read
+    same number of blocks.
+\end{itemize}
+\textbf{Deadline method:} Starvation solved by having 2 queues for read and
+write: We then have a deadline to serve every request and read and write 
+can have diff deadlines but we try to serve requests by sorted order 
+but periodically check if 2 other queues to see if deadline coming soon, if
+yes then go serve that request immediately, else default to optimal
+ordering(sorted). We always have oldest req at head of read and write queues.
+\end{multicols}
+
+\end{document}
